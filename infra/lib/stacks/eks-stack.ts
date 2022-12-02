@@ -18,6 +18,15 @@ export class EksStack extends cdk.Stack {
       assumedBy: new iam.AccountPrincipal(cdk.Stack.of(this).account),
     });
 
+    const podExecutionRole = new iam.Role(this, 'PodExecutionRole', {
+      assumedBy: new iam.ServicePrincipal('eks-fargate-pods.amazonaws.com'),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          'AmazonEKSFargatePodExecutionRolePolicy'
+        ),
+      ],
+    });
+
     const cluster = new eks.FargateCluster(this, 'FargateCluster', {
       version: eks.KubernetesVersion.V1_23,
       mastersRole,
@@ -26,6 +35,11 @@ export class EksStack extends cdk.Stack {
       outputConfigCommand: true,
       outputMastersRoleArn: true,
       endpointAccess: eks.EndpointAccess.PUBLIC_AND_PRIVATE,
+      defaultProfile: {
+        fargateProfileName: `${ns}fargate-profile`,
+        podExecutionRole,
+        selectors: [{ namespace: 'default' }, { namespace: 'kube-system' }],
+      },
       vpc: props.vpc,
       vpcSubnets: [{ subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS }],
     });
