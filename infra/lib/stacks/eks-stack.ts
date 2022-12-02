@@ -12,7 +12,7 @@ export class EksStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: IProps) {
     super(scope, id, props);
 
-    const ns = this.node.tryGetContext('ns');
+    const ns = this.node.tryGetContext('ns') as string;
 
     const mastersRole = new iam.Role(this, 'cluster-master-role', {
       assumedBy: new iam.AccountPrincipal(cdk.Stack.of(this).account),
@@ -30,13 +30,13 @@ export class EksStack extends cdk.Stack {
     const cluster = new eks.FargateCluster(this, 'FargateCluster', {
       version: eks.KubernetesVersion.V1_23,
       mastersRole,
-      clusterName: `${ns}fargate-cluster`,
+      clusterName: ns.toLowerCase(),
       outputClusterName: true,
       outputConfigCommand: true,
       outputMastersRoleArn: true,
       endpointAccess: eks.EndpointAccess.PUBLIC_AND_PRIVATE,
       defaultProfile: {
-        fargateProfileName: `${ns}fargate-profile`,
+        fargateProfileName: `${ns.toLowerCase()}fargate-profile`,
         podExecutionRole,
         selectors: [{ namespace: 'default' }, { namespace: 'kube-system' }],
       },
