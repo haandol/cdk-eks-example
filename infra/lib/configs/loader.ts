@@ -2,7 +2,7 @@ import * as path from 'path';
 import * as joi from 'joi';
 import * as dotenv from 'dotenv';
 import { IConfig } from './interface';
-import { VpcValidator } from './validators';
+import { SecurityGroupValidator, VpcValidator } from './validators';
 
 dotenv.config({
   path: path.resolve(__dirname, '..', '..', '.env'),
@@ -17,6 +17,14 @@ const schema = joi
     AWS_ACCOUNT_ID: joi.number().required(),
     AWS_REGION: joi.string().required(),
     VPC_ID: joi.string().custom(VpcValidator).required(),
+    MSK_SECURITY_GROUP_ID: joi
+      .string()
+      .custom(SecurityGroupValidator)
+      .required(),
+    RDS_SECURITY_GROUP_ID: joi
+      .string()
+      .custom(SecurityGroupValidator)
+      .required(),
   })
   .unknown();
 
@@ -34,5 +42,7 @@ export const Config: IConfig = {
     Region: envVars.AWS_REGION,
   },
   VpcId: envVars.VPC_ID,
+  MskSecurityGroupId: envVars.MSK_SECURITY_GROUP_ID,
+  RdsSecurityGroupId: envVars.RDS_SECURITY_GROUP_ID,
   IsProd: () => Config.Stage === 'Prod',
 };

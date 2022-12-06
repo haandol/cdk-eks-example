@@ -6,5 +6,7 @@ export interface IConfig {
     Region: string;
   };
   VpcId: string;
+  MskSecurityGroupId: string;
+  RdsSecurityGroupId: string;
   IsProd: () => boolean;
 }

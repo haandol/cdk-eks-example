@@ -21,6 +21,8 @@ const vpcStack = new VpcStack(app, `${Config.Ns}VpcStack`, {
 
 const eksStack = new EksStack(app, `${Config.Ns}EksStack`, {
   vpc: vpcStack.vpc,
+  mskSecurityGroupId: Config.MskSecurityGroupId,
+  rdsSecurityGroupId: Config.RdsSecurityGroupId,
   env: {
     account: Config.AWS.Account,
     region: Config.AWS.Region,

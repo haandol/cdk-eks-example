@@ -6,6 +6,8 @@ import { KubectlV23Layer } from '@aws-cdk/lambda-layer-kubectl-v23';
 
 interface IProps extends cdk.StackProps {
   vpc: ec2.IVpc;
+  mskSecurityGroupId: string;
+  rdsSecurityGroupId: string;
 }
 
 export class EksStack extends cdk.Stack {
@@ -31,6 +33,24 @@ export class EksStack extends cdk.Stack {
       },
     });
 
+    const securityGroup = new ec2.SecurityGroup(this, 'SecurityGroup', {
+      securityGroupName: `${ns}TaskSecurityGroup`,
+      vpc: props.vpc,
+    });
+    const mskSecurityGroup = ec2.SecurityGroup.fromSecurityGroupId(
+      this,
+      `MskSecurityGroup`,
+      props.mskSecurityGroupId
+    );
+    mskSecurityGroup.addIngressRule(securityGroup, ec2.Port.tcp(9094));
+
+    const rdsSecurityGroup = ec2.SecurityGroup.fromSecurityGroupId(
+      this,
+      `RdsSecurityGroup`,
+      props.rdsSecurityGroupId
+    );
+    rdsSecurityGroup.addIngressRule(securityGroup, ec2.Port.tcp(3306));
+
     const launchTemplate = new ec2.LaunchTemplate(this, 'LaunchTemplate', {
       launchTemplateName: ns.toLowerCase(),
       instanceType: ec2.InstanceType.of(
@@ -48,6 +68,7 @@ export class EksStack extends cdk.Stack {
           }),
         },
       ],
+      securityGroup,
     });
     cluster.addNodegroupCapacity('CustomNodeGroup', {
       launchTemplateSpec: {
