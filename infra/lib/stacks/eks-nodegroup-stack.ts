@@ -17,14 +17,14 @@ export class EksNodeGroupStack extends cdk.Stack {
     super(scope, id, props);
 
     const securityGroup = this.getClusterSecurityGroup(props);
-    const nodeGroup = this.newNodeGroup(props);
+    this.newNodeGroup(props);
 
     this.newEcrApiEndpoint(props.vpc, securityGroup);
     this.newEcrDockerEndpoint(props.vpc, securityGroup);
     this.newS3Endpoint(props.vpc);
   }
 
-  newNodeGroup(props: IProps): eks.Nodegroup {
+  newNodeGroup(props: IProps) {
     const ns = this.node.tryGetContext('ns') as string;
 
     const nodeRole = new iam.Role(this, 'NodeInstanceRole', {
@@ -48,16 +48,14 @@ export class EksNodeGroupStack extends cdk.Stack {
       clusterSecurityGroupId: props.clusterSecurityGroupId,
     });
 
-    const nodeGroup = new eks.Nodegroup(this, 'NodeGroup', {
-      nodegroupName: ns.toLowerCase(),
+    new eks.Nodegroup(this, 'NodeGroup', {
+      nodegroupName: `default`,
       instanceTypes: [new ec2.InstanceType('t3.medium')],
       cluster,
       nodeRole,
       maxSize: 4,
       diskSize: 128,
     });
-
-    return nodeGroup;
   }
 
   getClusterSecurityGroup(props: IProps): ec2.ISecurityGroup {
