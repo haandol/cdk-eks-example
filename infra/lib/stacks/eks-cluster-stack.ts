@@ -10,7 +10,7 @@ interface IProps extends cdk.StackProps {
 }
 
 export class EksClusterStack extends cdk.Stack {
-  public readonly cluster: eks.Cluster;
+  public readonly cluster: eks.ICluster;
 
   constructor(scope: Construct, id: string, props: IProps) {
     super(scope, id, props);
@@ -26,6 +26,9 @@ export class EksClusterStack extends cdk.Stack {
       assumedBy: new iam.ServicePrincipal('eks.amazonaws.com'),
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSClusterPolicy'),
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          'AmazonEKSVPCResourceController'
+        ),
       ],
     });
     const securityGroup = new ec2.SecurityGroup(this, 'SecurityGroup', {
@@ -36,7 +39,7 @@ export class EksClusterStack extends cdk.Stack {
       ec2.Port.allTraffic(),
       'All traffic for self'
     );
-    return new eks.Cluster(this, 'Cluster', {
+    const cluster = new eks.Cluster(this, 'Cluster', {
       clusterName: ns.toLowerCase(),
       vpc: props.vpc,
       vpcSubnets: [{ subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS }],
@@ -48,5 +51,6 @@ export class EksClusterStack extends cdk.Stack {
       securityGroup,
       role,
     });
+    return cluster;
   }
 }

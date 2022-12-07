@@ -16,48 +16,19 @@ export class EksNodeGroupStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: IProps) {
     super(scope, id, props);
 
-    const securityGroup = this.newSecurityGroup(props);
-    const launchTemplate = this.newLaunchTemplate(securityGroup);
-
-    this.newNodeGroup(props, launchTemplate);
+    const securityGroup = this.getClusterSecurityGroup(props);
+    const nodeGroup = this.newNodeGroup(props);
 
     this.newEcrApiEndpoint(props.vpc, securityGroup);
     this.newEcrDockerEndpoint(props.vpc, securityGroup);
     this.newS3Endpoint(props.vpc);
   }
 
-  newLaunchTemplate(securityGroup: ec2.ISecurityGroup): ec2.LaunchTemplate {
+  newNodeGroup(props: IProps): eks.Nodegroup {
     const ns = this.node.tryGetContext('ns') as string;
 
-    return new ec2.LaunchTemplate(this, 'LaunchTemplate', {
-      launchTemplateName: ns.toLowerCase(),
-      instanceType: ec2.InstanceType.of(
-        ec2.InstanceClass.M5,
-        ec2.InstanceSize.LARGE
-      ),
-      blockDevices: [
-        {
-          deviceName: '/dev/xvda',
-          mappingEnabled: true,
-          volume: ec2.BlockDeviceVolume.ebs(128, {
-            deleteOnTermination: true,
-            volumeType: ec2.EbsDeviceVolumeType.GP2,
-            encrypted: true,
-          }),
-        },
-      ],
-      securityGroup,
-    });
-  }
-
-  newNodeGroup(
-    props: IProps,
-    launchTemplate: ec2.LaunchTemplate
-  ): eks.Nodegroup {
-    const ns = this.node.tryGetContext('ns') as string;
-
-    const nodeRole = new iam.Role(this, 'NodeRole', {
-      roleName: `${ns}NodeRole`,
+    const nodeRole = new iam.Role(this, 'NodeInstanceRole', {
+      roleName: `${ns}NodeInstanceRole`,
       assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSWorkerNodePolicy'),
@@ -65,42 +36,34 @@ export class EksNodeGroupStack extends cdk.Stack {
         iam.ManagedPolicy.fromAwsManagedPolicyName(
           'AmazonEC2ContainerRegistryReadOnly'
         ),
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          'AmazonSSMManagedInstanceCore'
+        ),
       ],
     });
 
     const cluster = eks.Cluster.fromClusterAttributes(this, 'Cluster', {
       vpc: props.vpc,
       clusterName: props.clusterName,
+      clusterSecurityGroupId: props.clusterSecurityGroupId,
     });
 
     const nodeGroup = new eks.Nodegroup(this, 'NodeGroup', {
-      cluster,
       nodegroupName: ns.toLowerCase(),
+      cluster,
       nodeRole,
-      desiredSize: 2,
       maxSize: 4,
-      launchTemplateSpec: {
-        id: launchTemplate.launchTemplateId!,
-      },
+      diskSize: 128,
     });
+
     return nodeGroup;
   }
 
-  newSecurityGroup(props: IProps): ec2.SecurityGroup {
-    const ns = this.node.tryGetContext('ns') as string;
-
-    const securityGroup = new ec2.SecurityGroup(this, 'SecurityGroup', {
-      securityGroupName: `${ns}NodeSecurityGroup`,
-      vpc: props.vpc,
-    });
-    securityGroup.connections.allowInternally(
-      ec2.Port.allTraffic(),
-      'All traffic for self'
-    );
-    securityGroup.connections.allowFrom(
-      ec2.Peer.securityGroupId(props.clusterSecurityGroupId),
-      ec2.Port.allTraffic(),
-      'EKS Control to NodeGroup'
+  getClusterSecurityGroup(props: IProps): ec2.ISecurityGroup {
+    const securityGroup = ec2.SecurityGroup.fromSecurityGroupId(
+      this,
+      'SecurityGroup',
+      props.clusterSecurityGroupId
     );
 
     const mskSecurityGroup = ec2.SecurityGroup.fromSecurityGroupId(
