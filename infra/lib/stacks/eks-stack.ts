@@ -60,6 +60,8 @@ export class EksStack extends cdk.Stack {
       securityGroupName: `${ns}TaskSecurityGroup`,
       vpc: props.vpc,
     });
+    securityGroup.connections.allowInternally(ec2.Port.allTraffic());
+
     const mskSecurityGroup = ec2.SecurityGroup.fromSecurityGroupId(
       this,
       `MskSecurityGroup`,
