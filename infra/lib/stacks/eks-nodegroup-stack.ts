@@ -50,6 +50,7 @@ export class EksNodeGroupStack extends cdk.Stack {
 
     const nodeGroup = new eks.Nodegroup(this, 'NodeGroup', {
       nodegroupName: ns.toLowerCase(),
+      instanceTypes: [new ec2.InstanceType('t3.medium')],
       cluster,
       nodeRole,
       maxSize: 4,
