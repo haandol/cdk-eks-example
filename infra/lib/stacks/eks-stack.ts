@@ -1,5 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as eks from 'aws-cdk-lib/aws-eks';
 import { KubectlV23Layer } from '@aws-cdk/lambda-layer-kubectl-v23';
@@ -17,20 +18,14 @@ export class EksStack extends cdk.Stack {
     const ns = this.node.tryGetContext('ns') as string;
 
     const cluster = new eks.Cluster(this, 'Cluster', {
+      clusterName: ns.toLowerCase(),
       vpc: props.vpc,
       vpcSubnets: [{ subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS }],
-      clusterName: ns.toLowerCase(),
       version: eks.KubernetesVersion.V1_23,
       outputClusterName: true,
       outputConfigCommand: true,
-      outputMastersRoleArn: true,
-      endpointAccess: eks.EndpointAccess.PUBLIC_AND_PRIVATE,
       kubectlLayer: new KubectlV23Layer(this, 'kubectlV23Layer'),
       defaultCapacity: 0,
-      defaultCapacityType: eks.DefaultCapacityType.EC2,
-      albController: {
-        version: eks.AlbControllerVersion.V2_4_1,
-      },
     });
 
     const securityGroup = new ec2.SecurityGroup(this, 'SecurityGroup', {
@@ -69,8 +64,14 @@ export class EksStack extends cdk.Stack {
         },
       ],
       securityGroup,
+      detailedMonitoring: true,
     });
+
     cluster.addNodegroupCapacity('CustomNodeGroup', {
+      nodegroupName: ns.toLowerCase(),
+      desiredSize: 2,
+      minSize: 2,
+      maxSize: 4,
       launchTemplateSpec: {
         id: launchTemplate.launchTemplateId!,
         version: launchTemplate.versionNumber!,
