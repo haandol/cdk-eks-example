@@ -23,6 +23,7 @@ export class EksStack extends cdk.Stack {
     const launchTemplate = this.newLaunchTemplate(securityGroup);
 
     const nodeRole = new iam.Role(this, 'NodeRole', {
+      roleName: `${ns}NodeRole`,
       assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSWorkerNodePolicy'),
@@ -51,6 +52,7 @@ export class EksStack extends cdk.Stack {
     const ns = this.node.tryGetContext('ns') as string;
 
     const role = new iam.Role(this, 'ClusterRole', {
+      roleName: `${ns}ClusterRole`,
       assumedBy: new iam.ServicePrincipal('eks.amazonaws.com'),
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSClusterPolicy'),
