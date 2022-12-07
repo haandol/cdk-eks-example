@@ -21,27 +21,16 @@ export class EksStack extends cdk.Stack {
 
     const cluster = this.newEc2Cluster(props, securityGroup);
     const launchTemplate = this.newLaunchTemplate(securityGroup);
+    const tags = cdk.Tags.of(launchTemplate);
+    tags.add('eks:cluster-name', cluster.clusterName);
+    tags.add('eks:nodegroup-name', cluster.clusterName);
+    tags.add(`k8s.io/cluster-autoscaler/${cluster.clusterName}`, 'owned');
+    tags.add(`k8s.io/cluster-autoscaler/enabled`, 'true');
 
-    const nodeRole = new iam.Role(this, 'NodeRole', {
-      roleName: `${ns}NodeRole`,
-      assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
-      managedPolicies: [
-        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSWorkerNodePolicy'),
-        iam.ManagedPolicy.fromAwsManagedPolicyName(
-          'AmazonEC2ContainerRegistryReadOnly'
-        ),
-        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKS_CNI_Policy'),
-      ],
-    });
     cluster.addNodegroupCapacity('CustomNodeGroup', {
       nodegroupName: ns.toLowerCase(),
-      desiredSize: 2,
-      minSize: 2,
-      maxSize: 4,
-      nodeRole,
       launchTemplateSpec: {
         id: launchTemplate.launchTemplateId!,
-        version: launchTemplate.versionNumber!,
       },
     });
 
@@ -51,17 +40,9 @@ export class EksStack extends cdk.Stack {
   newEc2Cluster(props: IProps, securityGroup: ec2.ISecurityGroup): eks.Cluster {
     const ns = this.node.tryGetContext('ns') as string;
 
-    const role = new iam.Role(this, 'ClusterRole', {
-      roleName: `${ns}ClusterRole`,
-      assumedBy: new iam.ServicePrincipal('eks.amazonaws.com'),
-      managedPolicies: [
-        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSClusterPolicy'),
-      ],
-    });
     return new eks.Cluster(this, 'Cluster', {
       clusterName: ns.toLowerCase(),
       vpc: props.vpc,
-      role,
       vpcSubnets: [{ subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS }],
       version: eks.KubernetesVersion.V1_23,
       outputClusterName: true,
@@ -116,9 +97,6 @@ export class EksStack extends cdk.Stack {
           }),
         },
       ],
-      machineImage: new eks.EksOptimizedImage({
-        kubernetesVersion: eks.KubernetesVersion.V1_23.version,
-      }),
       securityGroup,
       detailedMonitoring: true,
     });
