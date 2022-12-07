@@ -63,6 +63,9 @@ export class EksStack extends cdk.Stack {
           }),
         },
       ],
+      machineImage: new eks.EksOptimizedImage({
+        kubernetesVersion: eks.KubernetesVersion.V1_23.version,
+      }),
       securityGroup,
       detailedMonitoring: true,
     });
