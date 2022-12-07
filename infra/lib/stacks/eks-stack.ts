@@ -17,16 +17,61 @@ export class EksStack extends cdk.Stack {
 
     const ns = this.node.tryGetContext('ns') as string;
 
-    const cluster = new eks.Cluster(this, 'Cluster', {
+    const securityGroup = this.newSecurityGroup(props);
+
+    const cluster = this.newEc2Cluster(props, securityGroup);
+    const launchTemplate = this.newLaunchTemplate(securityGroup);
+
+    const nodeRole = new iam.Role(this, 'NodeRole', {
+      assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSWorkerNodePolicy'),
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          'AmazonEC2ContainerRegistryReadOnly'
+        ),
+        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKS_CNI_Policy'),
+      ],
+    });
+    cluster.addNodegroupCapacity('CustomNodeGroup', {
+      nodegroupName: ns.toLowerCase(),
+      desiredSize: 2,
+      minSize: 2,
+      maxSize: 4,
+      nodeRole,
+      launchTemplateSpec: {
+        id: launchTemplate.launchTemplateId!,
+        version: launchTemplate.versionNumber!,
+      },
+    });
+
+    this.newEcrEndpoint(cluster, securityGroup);
+  }
+
+  newEc2Cluster(props: IProps, securityGroup: ec2.ISecurityGroup): eks.Cluster {
+    const ns = this.node.tryGetContext('ns') as string;
+
+    const role = new iam.Role(this, 'ClusterRole', {
+      assumedBy: new iam.ServicePrincipal('eks.amazonaws.com'),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSClusterPolicy'),
+      ],
+    });
+    return new eks.Cluster(this, 'Cluster', {
       clusterName: ns.toLowerCase(),
       vpc: props.vpc,
+      role,
       vpcSubnets: [{ subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS }],
       version: eks.KubernetesVersion.V1_23,
       outputClusterName: true,
       outputConfigCommand: true,
       kubectlLayer: new KubectlV23Layer(this, 'kubectlV23Layer'),
       defaultCapacity: 0,
+      securityGroup,
     });
+  }
+
+  newSecurityGroup(props: IProps): ec2.SecurityGroup {
+    const ns = this.node.tryGetContext('ns') as string;
 
     const securityGroup = new ec2.SecurityGroup(this, 'SecurityGroup', {
       securityGroupName: `${ns}TaskSecurityGroup`,
@@ -46,7 +91,13 @@ export class EksStack extends cdk.Stack {
     );
     rdsSecurityGroup.addIngressRule(securityGroup, ec2.Port.tcp(3306));
 
-    const launchTemplate = new ec2.LaunchTemplate(this, 'LaunchTemplate', {
+    return securityGroup;
+  }
+
+  newLaunchTemplate(securityGroup: ec2.ISecurityGroup): ec2.LaunchTemplate {
+    const ns = this.node.tryGetContext('ns') as string;
+
+    return new ec2.LaunchTemplate(this, 'LaunchTemplate', {
       launchTemplateName: ns.toLowerCase(),
       instanceType: ec2.InstanceType.of(
         ec2.InstanceClass.M5,
@@ -69,16 +120,22 @@ export class EksStack extends cdk.Stack {
       securityGroup,
       detailedMonitoring: true,
     });
+  }
 
-    cluster.addNodegroupCapacity('CustomNodeGroup', {
-      nodegroupName: ns.toLowerCase(),
-      desiredSize: 2,
-      minSize: 2,
-      maxSize: 4,
-      launchTemplateSpec: {
-        id: launchTemplate.launchTemplateId!,
-        version: launchTemplate.versionNumber!,
+  newEcrEndpoint(cluster: eks.Cluster, securityGroup: ec2.ISecurityGroup) {
+    const endpoint = new ec2.InterfaceVpcEndpoint(this, 'EcrVpcEndpoint', {
+      vpc: cluster.vpc,
+      service: ec2.InterfaceVpcEndpointAwsService.ECR,
+      subnets: {
+        subnets: cluster.vpc.privateSubnets,
       },
+      privateDnsEnabled: true,
     });
+
+    endpoint.connections.allowFrom(
+      ec2.Peer.securityGroupId(securityGroup.securityGroupId),
+      ec2.Port.tcp(443),
+      'EKS to ECR'
+    );
   }
 }
