@@ -51,9 +51,14 @@ export class EksNodeGroupStack extends cdk.Stack {
 
     new eks.Nodegroup(this, 'NodeGroup', {
       nodegroupName: `default`,
-      instanceTypes: [new ec2.InstanceType('t3.medium')],
+      instanceTypes: [
+        ec2.InstanceType.of(ec2.InstanceClass.M6G, ec2.InstanceSize.LARGE),
+      ],
+      amiType: eks.NodegroupAmiType.AL2_ARM_64,
       cluster,
       nodeRole,
+      desiredSize: 2,
+      minSize: 2,
       maxSize: 4,
       diskSize: 128,
     });

@@ -3,7 +3,7 @@ import { Construct } from 'constructs';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as eks from 'aws-cdk-lib/aws-eks';
-import { KubectlV23Layer } from '@aws-cdk/lambda-layer-kubectl-v23';
+import { KubectlV24Layer } from '@aws-cdk/lambda-layer-kubectl-v24';
 
 interface IProps extends cdk.StackProps {
   vpc: ec2.IVpc;
@@ -43,10 +43,10 @@ export class EksClusterStack extends cdk.Stack {
       clusterName: ns.toLowerCase(),
       vpc: props.vpc,
       vpcSubnets: [{ subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS }],
-      version: eks.KubernetesVersion.V1_23,
+      version: eks.KubernetesVersion.V1_24,
       outputClusterName: true,
       outputConfigCommand: true,
-      kubectlLayer: new KubectlV23Layer(this, 'kubectlV23Layer'),
+      kubectlLayer: new KubectlV24Layer(this, 'kubectlV24Layer'),
       defaultCapacity: 0,
       securityGroup,
       role,
