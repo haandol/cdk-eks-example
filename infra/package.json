@@ -23,7 +23,6 @@
   "dependencies": {
     "@aws-cdk/lambda-layer-kubectl-v24": "^2.0.3",
     "aws-cdk-lib": "2.54.0",
-    "cdk8s": "^2.5.59",
     "constructs": "^10.0.0",
     "dotenv": "^16.0.3",
     "joi": "^17.7.0",

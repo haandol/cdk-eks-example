@@ -45,3 +45,7 @@ const nodegroupStack = new EksNodeGroupStack(
   }
 );
 nodegroupStack.addDependency(clusterStack);
+
+const tags = cdk.Tags.of(app);
+tags.add('namespace', Config.Ns);
+tags.add('stage', Config.Stage);
