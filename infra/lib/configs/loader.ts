@@ -17,14 +17,8 @@ const schema = joi
     AWS_ACCOUNT_ID: joi.number().required(),
     AWS_REGION: joi.string().required(),
     VPC_ID: joi.string().custom(VpcValidator).required(),
-    MSK_SECURITY_GROUP_ID: joi
-      .string()
-      .custom(SecurityGroupValidator)
-      .required(),
-    RDS_SECURITY_GROUP_ID: joi
-      .string()
-      .custom(SecurityGroupValidator)
-      .required(),
+    MSK_SECURITY_GROUP_ID: joi.string().custom(SecurityGroupValidator),
+    RDS_SECURITY_GROUP_ID: joi.string().custom(SecurityGroupValidator),
   })
   .unknown();
 

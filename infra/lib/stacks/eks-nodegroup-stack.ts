@@ -8,8 +8,8 @@ interface IProps extends cdk.StackProps {
   vpc: ec2.IVpc;
   clusterName: string;
   clusterSecurityGroupId: string;
-  mskSecurityGroupId: string;
-  rdsSecurityGroupId: string;
+  mskSecurityGroupId?: string;
+  rdsSecurityGroupId?: string;
 }
 
 export class EksNodeGroupStack extends cdk.Stack {
@@ -72,27 +72,31 @@ export class EksNodeGroupStack extends cdk.Stack {
       props.clusterSecurityGroupId
     );
 
-    const mskSecurityGroup = ec2.SecurityGroup.fromSecurityGroupId(
-      this,
-      `MskSecurityGroup`,
-      props.mskSecurityGroupId
-    );
-    mskSecurityGroup.addIngressRule(
-      securityGroup,
-      ec2.Port.tcp(9094),
-      'NodeGroup to MSK'
-    );
+    if (props.mskSecurityGroupId) {
+      const mskSecurityGroup = ec2.SecurityGroup.fromSecurityGroupId(
+        this,
+        `MskSecurityGroup`,
+        props.mskSecurityGroupId
+      );
+      mskSecurityGroup.addIngressRule(
+        securityGroup,
+        ec2.Port.tcp(9094),
+        'NodeGroup to MSK'
+      );
+    }
 
-    const rdsSecurityGroup = ec2.SecurityGroup.fromSecurityGroupId(
-      this,
-      `RdsSecurityGroup`,
-      props.rdsSecurityGroupId
-    );
-    rdsSecurityGroup.addIngressRule(
-      securityGroup,
-      ec2.Port.tcp(3306),
-      'NodeGroup to RDS'
-    );
+    if (props.rdsSecurityGroupId) {
+      const rdsSecurityGroup = ec2.SecurityGroup.fromSecurityGroupId(
+        this,
+        `RdsSecurityGroup`,
+        props.rdsSecurityGroupId
+      );
+      rdsSecurityGroup.addIngressRule(
+        securityGroup,
+        ec2.Port.tcp(3306),
+        'NodeGroup to RDS'
+      );
+    }
 
     return securityGroup;
   }
