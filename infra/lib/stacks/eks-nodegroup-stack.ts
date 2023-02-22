@@ -40,7 +40,13 @@ export class EksNodeGroupStack extends cdk.Stack {
           'AmazonSSMManagedInstanceCore'
         ),
         iam.ManagedPolicy.fromAwsManagedPolicyName('SecretsManagerReadWrite'),
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          'AmazonPrometheusRemoteWriteAccess'
+        ),
         iam.ManagedPolicy.fromAwsManagedPolicyName('AWSXRayDaemonWriteAccess'),
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          'CloudWatchAgentServerPolicy'
+        ),
       ],
     });
 
