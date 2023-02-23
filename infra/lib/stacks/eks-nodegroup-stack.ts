@@ -16,39 +16,41 @@ export class EksNodeGroupStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: IProps) {
     super(scope, id, props);
 
-    const securityGroup = this.getClusterSecurityGroup(props);
-    this.newNodeGroup(props);
-
+    const securityGroup = this.newSecurityGroup(props);
+    this.newEc2Endpoint(props.vpc, securityGroup);
     this.newEcrApiEndpoint(props.vpc, securityGroup);
     this.newEcrDockerEndpoint(props.vpc, securityGroup);
     this.newS3Endpoint(props.vpc);
+
+    const template = this.newLaunchTemplate(securityGroup);
+    this.newNodeGroup(props, template);
   }
 
-  newNodeGroup(props: IProps) {
+  newLaunchTemplate(securityGroup: ec2.ISecurityGroup): ec2.ILaunchTemplate {
     const ns = this.node.tryGetContext('ns') as string;
 
-    const nodeRole = new iam.Role(this, 'NodeInstanceRole', {
-      roleName: `${ns}NodeInstanceRole`,
-      assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
-      managedPolicies: [
-        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSWorkerNodePolicy'),
-        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKS_CNI_Policy'),
-        iam.ManagedPolicy.fromAwsManagedPolicyName(
-          'AmazonEC2ContainerRegistryReadOnly'
-        ),
-        iam.ManagedPolicy.fromAwsManagedPolicyName(
-          'AmazonSSMManagedInstanceCore'
-        ),
-        iam.ManagedPolicy.fromAwsManagedPolicyName('SecretsManagerReadWrite'),
-        iam.ManagedPolicy.fromAwsManagedPolicyName(
-          'AmazonPrometheusRemoteWriteAccess'
-        ),
-        iam.ManagedPolicy.fromAwsManagedPolicyName('AWSXRayDaemonWriteAccess'),
-        iam.ManagedPolicy.fromAwsManagedPolicyName(
-          'CloudWatchAgentServerPolicy'
-        ),
+    return new ec2.LaunchTemplate(this, 'LaunchTemplate', {
+      launchTemplateName: `${ns}LaunchTemplate`,
+      securityGroup,
+      detailedMonitoring: true,
+      requireImdsv2: true,
+      httpTokens: ec2.LaunchTemplateHttpTokens.REQUIRED,
+      blockDevices: [
+        {
+          deviceName: '/dev/xvda',
+          mappingEnabled: true,
+          volume: ec2.BlockDeviceVolume.ebs(256, {
+            deleteOnTermination: true,
+            volumeType: ec2.EbsDeviceVolumeType.GP2,
+            encrypted: true,
+          }),
+        },
       ],
     });
+  }
+
+  newNodeGroup(props: IProps, template: ec2.ILaunchTemplate) {
+    const ns = this.node.tryGetContext('ns') as string;
 
     const cluster = eks.Cluster.fromClusterAttributes(this, 'Cluster', {
       vpc: props.vpc,
@@ -56,22 +58,57 @@ export class EksNodeGroupStack extends cdk.Stack {
       clusterSecurityGroupId: props.clusterSecurityGroupId,
     });
 
+    const nodeRole = new iam.Role(this, 'NodeInstanceRole', {
+      roleName: `${ns}NodeInstanceRole`,
+      assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSWorkerNodePolicy'),
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          'AmazonEC2ContainerRegistryReadOnly'
+        ),
+        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKS_CNI_Policy'),
+        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonS3ReadOnlyAccess'),
+      ],
+    });
+    nodeRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'autoscaling:DescribeAutoScalingGroups',
+          'autoscaling:DescribeAutoScalingInstances',
+          'autoscaling:DescribeLaunchConfigurations',
+          'autoscaling:DescribeTags',
+          'autoscaling:CreateOrUpdateTags',
+          'autoscaling:UpdateAutoScalingGroup',
+          'autoscaling:TerminateInstanceInAutoScalingGroup',
+          'ec2:DescribeLaunchTemplateVersions',
+          'tag:GetResources',
+        ],
+        resources: ['*'],
+      })
+    );
+
     new eks.Nodegroup(this, 'NodeGroup', {
       nodegroupName: `default`,
+      subnets: {
+        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+      },
+      cluster,
+      nodeRole,
+      amiType: eks.NodegroupAmiType.AL2_ARM_64,
       instanceTypes: [
         ec2.InstanceType.of(ec2.InstanceClass.M6G, ec2.InstanceSize.LARGE),
       ],
-      amiType: eks.NodegroupAmiType.AL2_ARM_64,
-      cluster,
-      nodeRole,
+      launchTemplateSpec: {
+        id: template.launchTemplateId!,
+      },
       desiredSize: 2,
       minSize: 2,
       maxSize: 4,
-      diskSize: 128,
     });
   }
 
-  getClusterSecurityGroup(props: IProps): ec2.ISecurityGroup {
+  newSecurityGroup(props: IProps): ec2.ISecurityGroup {
     const securityGroup = ec2.SecurityGroup.fromSecurityGroupId(
       this,
       'SecurityGroup',
@@ -105,6 +142,23 @@ export class EksNodeGroupStack extends cdk.Stack {
     }
 
     return securityGroup;
+  }
+
+  newEc2Endpoint(vpc: ec2.IVpc, securityGroup: ec2.ISecurityGroup) {
+    const endpoint = new ec2.InterfaceVpcEndpoint(this, 'Ec2VpcEndpoint', {
+      vpc,
+      service: ec2.InterfaceVpcEndpointAwsService.EC2,
+      subnets: {
+        subnets: vpc.privateSubnets,
+      },
+      privateDnsEnabled: true,
+    });
+
+    endpoint.connections.allowFrom(
+      ec2.Peer.securityGroupId(securityGroup.securityGroupId),
+      ec2.Port.allTcp(),
+      'EKS to EC2'
+    );
   }
 
   newEcrApiEndpoint(vpc: ec2.IVpc, securityGroup: ec2.ISecurityGroup) {

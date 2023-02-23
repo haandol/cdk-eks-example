@@ -38,7 +38,7 @@ $ cp env/dev.env .env
 
 ```bash
 $ cd infra
-$ npm i -g aws-cdk@2.65
+$ npm i -g aws-cdk@2.66
 $ npm i
 ```
 
