@@ -19,6 +19,7 @@ const schema = joi
     VPC_ID: joi.string().custom(VpcValidator).required(),
     MSK_SECURITY_GROUP_ID: joi.string().custom(SecurityGroupValidator),
     RDS_SECURITY_GROUP_ID: joi.string().custom(SecurityGroupValidator),
+    ENDPOINT_PUBLIC_CIDR: joi.string().required(),
   })
   .unknown();
 
@@ -38,5 +39,6 @@ export const Config: IConfig = {
   VpcId: envVars.VPC_ID,
   MskSecurityGroupId: envVars.MSK_SECURITY_GROUP_ID,
   RdsSecurityGroupId: envVars.RDS_SECURITY_GROUP_ID,
+  EndpointPublicCidr: envVars.ENDPOINT_PUBLIC_CIDR,
   IsProd: () => Config.Stage === 'Prod',
 };

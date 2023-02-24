@@ -22,6 +22,7 @@ const vpcStack = new VpcStack(app, `${Config.Ns}VpcStack`, {
 
 const clusterStack = new EksClusterStack(app, `${Config.Ns}EksClusterStack`, {
   vpc: vpcStack.vpc,
+  endpointPublicCidr: Config.EndpointPublicCidr,
   env: {
     account: Config.AWS.Account,
     region: Config.AWS.Region,
