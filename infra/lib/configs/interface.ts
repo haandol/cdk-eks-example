@@ -8,6 +8,6 @@ export interface IConfig {
   VpcId: string;
   MskSecurityGroupId?: string;
   RdsSecurityGroupId?: string;
-  EndpointPublicCidr: string;
+  EndpointPublicCidrs: string[];
   IsProd: () => boolean;
 }

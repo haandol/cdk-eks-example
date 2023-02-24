@@ -39,6 +39,8 @@ export const Config: IConfig = {
   VpcId: envVars.VPC_ID,
   MskSecurityGroupId: envVars.MSK_SECURITY_GROUP_ID,
   RdsSecurityGroupId: envVars.RDS_SECURITY_GROUP_ID,
-  EndpointPublicCidr: envVars.ENDPOINT_PUBLIC_CIDR,
+  EndpointPublicCidrs: envVars.ENDPOINT_PUBLIC_CIDR.split(',').map(
+    (cidr: string) => cidr.trim()
+  ),
   IsProd: () => Config.Stage === 'Prod',
 };

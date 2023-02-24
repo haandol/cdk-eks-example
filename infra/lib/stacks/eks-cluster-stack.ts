@@ -7,7 +7,7 @@ import { KubectlV24Layer } from '@aws-cdk/lambda-layer-kubectl-v24';
 
 interface IProps extends cdk.StackProps {
   vpc: ec2.IVpc;
-  endpointPublicCidr: string;
+  endpointPublicCidrs: string[];
 }
 
 export class EksClusterStack extends cdk.Stack {
@@ -45,7 +45,7 @@ export class EksClusterStack extends cdk.Stack {
       vpc: props.vpc,
       vpcSubnets: [{ subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS }],
       endpointAccess: eks.EndpointAccess.PUBLIC_AND_PRIVATE.onlyFrom(
-        props.endpointPublicCidr
+        ...props.endpointPublicCidrs
       ),
       version: eks.KubernetesVersion.V1_24,
       outputClusterName: true,
