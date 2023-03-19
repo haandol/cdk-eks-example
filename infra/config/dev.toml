@@ -1,0 +1,15 @@
+[app]
+ns="EksDemo"
+stage="Dev"
+
+[aws]
+account=""
+region="ap-northeast-2"
+
+[vpc]
+id=""
+endpointPublicCidrs=["0.0.0.0/0"]
+
+[securityGroups]
+msk=""
+rds=""

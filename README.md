@@ -21,24 +21,19 @@ Default output format [json]:
 
 ## Configuration
 
-open [**infra/env/dev.env**](/infra/env/dev.env) and fill the blow fields
-
-- `VPC_ID`: vpc id
-- `AWS_ACCOUNT_ID`: 12 digit account id
-- `AWS_REGION`: e.g. ap-northeast-2
-
-and copy `env/dev.env` file to project root as `.env`
+open [**infra/config/dev.toml**](/infra/config/dev.toml) and fill the empty fields
+and copy `config/dev.toml` file to project root as `.toml`
 
 ```bash
 $ cd infra
-$ cp env/dev.env .env
+$ cp config/dev.toml .toml
 ```
 
 ## Install dependencies
 
 ```bash
 $ cd infra
-$ npm i -g aws-cdk@2.66
+$ npm i -g aws-cdk@2.69
 $ npm i
 ```
 
@@ -46,5 +41,5 @@ $ npm i
 
 ```bash
 $ cdk bootstrap
-$ cdk deploy --require-approval never
+$ cdk deploy "*" --require-approval never
 ```
