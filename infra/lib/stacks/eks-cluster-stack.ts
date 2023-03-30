@@ -3,7 +3,7 @@ import { Construct } from 'constructs';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as eks from 'aws-cdk-lib/aws-eks';
-import { KubectlV24Layer } from '@aws-cdk/lambda-layer-kubectl-v24';
+import { KubectlV25Layer } from '@aws-cdk/lambda-layer-kubectl-v25';
 
 interface IProps extends cdk.StackProps {
   vpc: ec2.IVpc;
@@ -47,10 +47,10 @@ export class EksClusterStack extends cdk.Stack {
       endpointAccess: eks.EndpointAccess.PUBLIC_AND_PRIVATE.onlyFrom(
         ...props.endpointPublicCidrs
       ),
-      version: eks.KubernetesVersion.V1_24,
+      version: eks.KubernetesVersion.V1_25,
       outputClusterName: true,
       outputConfigCommand: true,
-      kubectlLayer: new KubectlV24Layer(this, 'kubectlV24Layer'),
+      kubectlLayer: new KubectlV25Layer(this, 'kubectlV25Layer'),
       defaultCapacity: 0,
       securityGroup,
       role,
